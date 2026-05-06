@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Street Racer : GT Edition</title>
+    <style>
+        /* FONTS IMPORTS (Montserrat & Orbitron) */
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&family=Orbitron:wght@500;900&display=swap');
+
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Montserrat', sans-serif; user-select: none; }
+        
+        /* --- UI LAYER --- */
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex; flex-direction: column; justify-content: space-between;
+            z-index: 5;
+        }
+
+        /* --- POLICE WARNING --- */
+        #police-warning {
+            display: none;
+            position: absolute; top: 20%; width: 100%;
+            text-align: center;
+            color: #ff0000;
+            font-family: 'Orbitron'; font-size: 50px; font-weight: 900;
+            text-shadow: 0 0 20px #ff0000;
+            animation: flash 0.5s infinite alternate;
+        }
+        @keyframes flash { from { opacity: 1; } to { opacity: 0; } }
+
+        #police-timer-bar {
+            display: none;
+            position: absolute; top: 120px; left: 50%; transform: translateX(-50%);
+            width: 400px; height: 10px; background: #333;
+            border: 2px solid #fff;
+        }
+        #police-timer-fill {
+            width: 100%; height: 100%; background: #00ffff; transition: width 1s linear;
+        }
+
+        /* --- GAME OVER --- */
+        #game-over-screen {
+            display: none;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 50, 1);
+            flex-direction: column; justify-content: center; align-items: center;
+            z-index: 20; pointer-events: auto;
+        }
+        .busted-text { font-family: 'Orbitron'; font-size: 100px; color: #ff0000; transform: rotate(-10deg); border: 10px solid red; padding: 20px; }
+
+        /* --- MUSIC PLAYER --- */
+        #music-player {
+            position: absolute; bottom: 30px; left: 30px;
+            width: 350px; height: 100px;
+            background: #181818;
+            border-radius: 10px;
+            display: flex; align-items: center;
+            padding: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            pointer-events: auto;
+            color: white;
+            font-family: 'Montserrat';
+        }
+        #album-art {
+            width: 80px; height: 80px;
+            background: #333 url('Car.jpg') center/cover;
+            border-radius: 5px; margin-right: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .track-info { flex-grow: 1; overflow: hidden; }
+        .track-title { font-weight: bold; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 5px; }
+        .track-artist { font-size: 12px; color: #b3b3b3; }
+        .controls { display: flex; align-items: center; gap: 15px; margin-left: 10px; }
+        .control-btn {
+            background: none; border: none; color: #b3b3b3; font-size: 20px; cursor: pointer; transition: 0.2s;
+        }
+        .control-btn:hover { color: white; transform: scale(1.1); }
+        .play-btn {
+            width: 40px; height: 40px; border-radius: 50%; background: white; color: black;
+            display: flex; justify-content: center; align-items: center; font-size: 18px;
+        }
+
+        /* --- MINIMAP & DASHBOARD --- */
+        #minimap-container {
+            position: absolute; top: 20px; right: 20px;
+            width: 150px; height: 150px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 50%; overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,255,255,0.2);
+        }
+        #minimap-canvas { width: 100%; height: 100%; }
+
+        #dashboard {
+            position: absolute; bottom: 30px; right: 30px;
+            text-align: right; color: white; transform: skewX(-10deg);
+            display: flex; flex-direction: column; align-items: flex-end;
+        }
+        #time-display { font-family: 'Orbitron'; font-size: 24px; font-weight: 500; color: #fff; margin-bottom: 5px; }
+        #speed-val { font-family: 'Orbitron'; font-size: 100px; font-weight: 900; line-height: 1; color: #fff; text-shadow: 0 0 20px cyan; }
+        #speed-unit { font-size: 20px; color: #888; letter-spacing: 2px; }
+        
+        .nitro-wrapper {
+            width: 300px; height: 15px; background: #222; margin-top: 5px; border: 2px solid #555;
+            display: inline-block; position: relative;
+        }
+        #nitro-bar {
+            width: 100%; height: 100%; background: linear-gradient(90deg, #ffff00, #ff0000);
+            box-shadow: 0 0 20px #ff4400; transition: width 0.05s linear;
+        }
+        #nitro-text { position: absolute; left: 5px; top: -20px; font-size: 12px; color: #ff4400; font-weight: bold; }
+
+        #score-display {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            color: white; font-family: 'Orbitron'; font-size: 30px; text-shadow: 0 0 10px #ffff00;
+        }
+
+        /* --- MENUS --- */
+        .overlay-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+            padding-left: 10%; pointer-events: auto; backdrop-filter: blur(8px); z-index: 10;
+        }
+        .title-big { color: #fff; font-size: 90px; margin: 0; font-style: italic; text-shadow: 4px 4px 0px #ff0055; font-family: 'Orbitron'; }
+        .subtitle { color: #aaa; margin-top: -10px; margin-bottom: 40px; letter-spacing: 5px; font-family: 'Orbitron'; }
+        .btn {
+            background: transparent; border: 2px solid white; color: white; padding: 15px 40px; margin: 10px 0;
+            font-size: 20px; font-weight: bold; text-transform: uppercase; font-family: 'Orbitron';
+            cursor: pointer; transition: 0.3s; clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%); width: 300px; text-align: left;
+        }
+        .btn:hover { background: white; color: black; transform: translateX(20px); }
+        .btn-action { background: #ff0055; border-color: #ff0055; }
+        
+        /* --- GARAGE (GRAN TURISMO STYLE) --- */
+        #garage-screen {
+            display: none;
+            flex-direction: column;
+            justify-content: flex-start; /* Align top */
+            align-items: flex-start;
+            background: #000; /* Le canvas fera le fond */
+            overflow: hidden;
+            padding: 0;
+        }
+
+        #car-preview-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
+        }
+
+        /* Stats Panel (Top Right now) */
+        #garage-stats-panel {
+            position: absolute;
+            top: 40px; right: 40px;
+            width: 350px;
+            padding: 25px;
+            background: rgba(0, 0, 0, 0.6);
+            border-top: 2px solid #ff0055;
+            border-bottom: 2px solid #ff0055;
+            color: white;
+            z-index: 10;
+            backdrop-filter: blur(10px);
+            display: flex; flex-direction: column; gap: 15px;
+        }
+        
+        #selected-car-name { font-family: 'Orbitron'; font-size: 32px; margin: 0; text-transform: uppercase; }
+        #selected-car-desc { font-size: 14px; color: #ccc; margin-bottom: 10px; font-style: italic; }
+
+        .car-stats { display: flex; flex-direction: column; gap: 10px; }
+        .stat-row { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-family: 'Orbitron'; letter-spacing: 1px; }
+        .stat-bar-bg { width: 200px; height: 6px; background: #333; transform: skewX(-20deg); }
+        .stat-bar-fill { height: 100%; transition: width 0.3s ease-out; background: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+
+        /* GT Carousel Strip */
+        #gt-carousel-wrapper {
+            position: absolute;
+            bottom: 0; left: 0; width: 100%;
+            height: 220px;
+            background: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 60%, transparent 100%);
+            z-index: 10;
+            display: flex; flex-direction: column;
+            justify-content: flex-end;
+            padding-bottom: 20px;
+        }
+        
+        #gt-scroll-container {
+            display: flex;
+            overflow-x: auto;
+            padding: 0 40px;
+            gap: 15px;
+            scrollbar-width: none; /* Hide scrollbar Firefox */
+            scroll-behavior: smooth;
+        }
+        #gt-scroll-container::-webkit-scrollbar { display: none; } /* Hide scrollbar Chrome */
+
+        .gt-card {
+            flex: 0 0 200px;
+            height: 140px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #444;
+            border-radius: 4px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex; flex-direction: column; justify-content: flex-end;
+            overflow: hidden;
+        }
+        .gt-card:hover { background: rgba(255, 255, 255, 0.15); border-color: #fff; }
+        .gt-card.selected { 
+            border: 2px solid #ff0055; 
+            background: rgba(255, 0, 85, 0.1); 
+            box-shadow: 0 0 15px rgba(255, 0, 85, 0.4);
+        }
+
+        /* Invisible spacer for the 3D canvas targeting */
+        .gt-card-canvas-target {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;
+        }
+        
+        .gt-card-name {
+            font-family: 'Orbitron'; font-size: 12px; color: white; 
+            padding: 8px; background: rgba(0,0,0,0.8); width: 100%; box-sizing: border-box;
+            text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        /* Garage Action Buttons */
+        #garage-actions {
+            position: absolute; top: 40px; left: 40px; z-index: 10;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+
+        #leaderboard {
+            margin-top: 15px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #333;
+            padding: 10px;
+            max-height: 100px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        #leaderboard h3 { font-family: 'Orbitron'; color: #ff0055; margin: 0 0 5px 0; font-size: 14px; }
+        #leaderboard-list { list-style: none; padding: 0; margin: 0; }
+        #leaderboard-list li { display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding: 2px 0; }
+
+        /* OPTIONS */
+        #options-screen { display: none; flex-direction: column; }
+        .option-group { width: 500px; margin-bottom: 30px; padding: 20px; border: 1px solid #333; background: #111; }
+        .option-group label { color: white; font-family:'Orbitron'; display:block; margin-bottom:10px; }
+        input[type="range"] { width: 100%; accent-color: #ff0055; cursor: pointer; }
+        
+        .input-field {
+            background: rgba(255,255,255,0.1); border: 2px solid white; color: white; padding: 15px 40px; margin: 10px 0;
+            font-size: 20px; font-weight: bold; text-transform: uppercase; font-family: 'Orbitron';
+            width: 300px; text-align: center;
+        }
+
+        #reward-message {
+            display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0, 255, 255, 0.2); color: white; font-family: 'Orbitron'; font-size: 30px;
+            padding: 20px 40px; border: 2px solid #00ffff; border-radius: 10px; text-shadow: 0 0 15px #00ffff;
+            z-index: 100; pointer-events: none; animation: fadeInOut 3s ease-in-out;
+        }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            15% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            85% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+        }
+
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <audio id="game-music" src="voiture.mp3" loop></audio>
+
+    <div id="username-screen" class="overlay-screen">
+        <h1 class="title-big">NIGHT VELOCITY</h1>
+        <h2 class="subtitle">Ultimate Pursuit</h2>
+        <input type="text" id="username-input" placeholder="ENTREZ PSEUDO" class="input-field">
+        <button class="btn btn-action" onclick="submitUsername()">COMMENCER</button>
+    </div>
+
+    <div id="main-menu" class="overlay-screen" style="display: none;">
+        <h1 class="title-big">NIGHT VELOCITY</h1>
+        <h2 class="subtitle">Ultimate Pursuit</h2>
+        <button class="btn btn-action" onclick="openGarage()">GARAGE & COURSE</button>
+        <button class="btn" onclick="openOptions()">OPTIONS</button>
+        <div style="color:white; margin-top:20px; font-size:14px; opacity:0.7;">
+            ZQSD : Conduire | ESPACE : Nitro | FLÈCHES : Caméra
+        </div>
+    </div>
+
+    <div id="options-screen" class="overlay-screen" style="display: none;">
+        <h1 class="title-big" style="font-size: 70px;">OPTIONS</h1>
+        <div class="option-group">
+            <label>LUMINOSITÉ</label>
+            <input type="range" min="0.1" max="2.0" value="1.0" step="0.1" oninput="updateBrightness(this.value)">
+            <p style="color:#aaa; font-size:12px; margin-top: 10px;">Ajuste l'intensité de la lumière ambiante.</p>
+        </div>
+        <button class="btn" onclick="closeOptions()">RETOUR</button>
+    </div>
+
+    <div id="garage-screen" class="overlay-screen">
+        
+        <div id="car-preview-container"></div>
+
+        <div id="garage-actions">
+            <button class="btn btn-action" onclick="startGame()">LANCER LA COURSE</button>
+            <button class="btn" onclick="openOptions()">OPTIONS</button>
+            <button class="btn" onclick="closeGarage()">CHANGER PSEUDO</button>
+        </div>
+
+        <div id="garage-stats-panel">
+             <h1 id="selected-car-name">NOM VOITURE</h1>
+             <p id="selected-car-desc">Description...</p>
+            
+            <div class="car-stats">
+                <div class="stat-row">
+                    <span>VITESSE</span>
+                    <div class="stat-bar-bg"><div id="stat-speed" class="stat-bar-fill" style="background:#00ffff;"></div></div>
+                </div>
+                <div class="stat-row">
+                    <span>ACCÉLÉRATION</span>
+                    <div class="stat-bar-bg"><div id="stat-accel" class="stat-bar-fill" style="background:#ff0055;"></div></div>
+                </div>
+                <div class="stat-row">
+                    <span>MANIABILITÉ</span>
+                    <div class="stat-bar-bg"><div id="stat-handling" class="stat-bar-fill" style="background:#ffff00;"></div></div>
+                </div>
+            </div>
+            
+            <div id="leaderboard">
+                <h3>MEILLEURS SCORES</h3>
+                <ol id="leaderboard-list"></ol>
+            </div>
+        </div>
+
+        <div id="gt-carousel-wrapper">
+            <div id="gt-scroll-container">
+                </div>
+        </div>
+    </div>
+
+    <div id="game-over-screen">
+        <div class="busted-text">ARRESTED</div>
+        <h2 style="color:white; font-family:'Orbitron';">LA POLICE VOUS A COINCÉ</h2>
+        <button class="btn btn-action" onclick="returnToMenu()">RETOUR AU MENU</button>
+    </div>
+
+    <div id="ui-layer" style="display:none;">
+        <div id="music-player">
+            <div id="album-art"></div>
+            <div class="track-info">
+                <div id="track-title" class="track-title">NIGHTCALL</div>
+                <div class="track-artist">Kavinsky</div>
+            </div>
+            <div class="controls">
+                <button class="control-btn" onclick="skipMusic(-60)">⏮</button>
+                <button class="control-btn play-btn" onclick="togglePlayMusic()">⏯</button>
+                <button class="control-btn" onclick="skipMusic(60)">⏭</button>
+            </div>
+        </div>
+        <div id="police-warning">⚠️ POLICE ⚠️</div>
+        <div id="police-timer-bar"><div id="police-timer-fill"></div></div>
+        <div id="rewards-timers" style="position: absolute; top: 180px; left: 50%; transform: translateX(-50%); color: white; font-family: 'Orbitron'; text-align: center; text-shadow: 0 0 5px rgba(0,0,0,0.7);"></div>
+        <div id="minimap-container"><canvas id="minimap-canvas" width="150" height="150"></canvas></div>
+        <div id="dashboard">
+            <div id="username-display" style="color: white; font-family: 'Orbitron'; font-size: 20px; text-shadow: 0 0 10px #00ffff;"></div>
+            <div id="time-display">00h00</div>
+            <div><span id="speed-val">0</span> <span id="speed-unit">KM/H</span></div>
+            <div class="nitro-wrapper">
+                <span id="nitro-text">NITRO BOOST</span>
+                <div id="nitro-bar"></div>
+            </div>
+        </div>
+        <div id="score-display">SCORE: 0</div>
+    </div>
+
+    <div id="reward-message"></div>
+
+    <script>
+        let username = "Player 1";
+
+        // --- DONNÉES GARAGE (30 VOITURES) ---
+        const CARS = [
+            { name: "Neon Starter", desc: "Équilibrée et fiable.", color: 0x00ffff, speed: 2.0, accel: 0.02, handle: 0.04, shape: "sedan" },
+            { name: "Red Devil", desc: "Muscle car brutale.", color: 0xff0000, speed: 2.1, accel: 0.035, handle: 0.035, shape: "muscle" },
+            { name: "Phantom GT", desc: "Reine de la vitesse.", color: 0x555555, speed: 2.8, accel: 0.015, handle: 0.03, shape: "sport" },
+            { name: "Green Mamba", desc: "Agile pour le slalom.", color: 0x00ff00, speed: 2.2, accel: 0.025, handle: 0.06, shape: "hatch" },
+            { name: "Golden Star", desc: "Luxe et performance.", color: 0xffaa00, speed: 2.5, accel: 0.022, handle: 0.04, shape: "sport" },
+            { name: "Tanker X", desc: "Lourde et inarrêtable.", color: 0x224488, speed: 1.6, accel: 0.01, handle: 0.02, shape: "truck" },
+            { name: "Pink Fury", desc: "Petite et nerveuse.", color: 0xff00ff, speed: 2.3, accel: 0.03, handle: 0.05, shape: "hatch" },
+            { name: "Shadow Ops", desc: "Furtive et stable.", color: 0x111111, speed: 2.6, accel: 0.02, handle: 0.025, shape: "sedan" },
+            { name: "Ice Breaker", desc: "Glisse sur le bitume.", color: 0xaaddff, speed: 2.1, accel: 0.018, handle: 0.01, shape: "muscle" },
+            { name: "Velocity X", desc: "La meilleure de toutes.", color: 0xffffff, speed: 3.2, accel: 0.04, handle: 0.08, shape: "f1" },
+            { name: "Night Raven", desc: "Précise et silencieuse.", color: 0x222244, speed: 2.4, accel: 0.02, handle: 0.055, shape: "sedan" },
+            { name: "Solar Blaze", desc: "Explosive au départ.", color: 0xff6600, speed: 2.6, accel: 0.04, handle: 0.045, shape: "sport" },
+            { name: "Urban Fox", desc: "Parfaite en ville.", color: 0xff8844, speed: 2.2, accel: 0.028, handle: 0.06, shape: "hatch" },
+            { name: "Iron Claw", desc: "Puissance brute.", color: 0x444444, speed: 2.0, accel: 0.035, handle: 0.03, shape: "muscle" },
+            { name: "Skyline R", desc: "Équilibrée haute vitesse.", color: 0x3399ff, speed: 2.7, accel: 0.026, handle: 0.05, shape: "sport" },
+            { name: "Dust Runner", desc: "Taillée pour routes difficiles.", color: 0xaa7744, speed: 2.1, accel: 0.022, handle: 0.04, shape: "suv" },
+            { name: "Hyper Nova", desc: "Prototype futuriste.", color: 0xaa00ff, speed: 3.0, accel: 0.035, handle: 0.07, shape: "concept" },
+            { name: "Crimson V8", desc: "Le rugissement du moteur.", color: 0x990000, speed: 2.5, accel: 0.038, handle: 0.032, shape: "muscle" },
+            { name: "Aqua Drift", desc: "Maîtresse du dérapage.", color: 0x00bbcc, speed: 2.3, accel: 0.03, handle: 0.075, shape: "sport" },
+            { name: "Midnight GT", desc: "Stable et rapide de nuit.", color: 0x000022, speed: 2.8, accel: 0.024, handle: 0.05, shape: "gt" },
+            { name: "Volt Runner", desc: "Électrique ultra nerveuse.", color: 0x66ffcc, speed: 2.4, accel: 0.045, handle: 0.06, shape: "sedan" },
+            { name: "Titan Hauler", desc: "Monstre d’acier.", color: 0x555577, speed: 1.5, accel: 0.012, handle: 0.02, shape: "truck" },
+            { name: "Blizzard R", desc: "Contrôle extrême.", color: 0xe0f6ff, speed: 2.6, accel: 0.023, handle: 0.065, shape: "sport" },
+            { name: "Inferno RS", desc: "Ultra agressive.", color: 0xff2200, speed: 2.9, accel: 0.04, handle: 0.055, shape: "supercar" },
+            { name: "Neo Retro", desc: "Vintage modernisé.", color: 0xffcc88, speed: 2.0, accel: 0.02, handle: 0.045, shape: "classic" },
+            { name: "Carbon X", desc: "Légère et tranchante.", color: 0x1c1c1c, speed: 3.1, accel: 0.03, handle: 0.08, shape: "hypercar" },
+            { name: "Pulse Street", desc: "Rapide et polyvalente.", color: 0x44ff44, speed: 2.35, accel: 0.027, handle: 0.055, shape: "hatch" },
+            { name: "Royal Coupe", desc: "Classe et confort.", color: 0x663399, speed: 2.2, accel: 0.018, handle: 0.035, shape: "coupe" },
+            { name: "Storm Chaser", desc: "Stable à haute vitesse.", color: 0x336666, speed: 2.7, accel: 0.025, handle: 0.05, shape: "gt" },
+            { name: "Zero-One", desc: "Machine de course ultime.", color: 0xffffff, speed: 3.4, accel: 0.045, handle: 0.09, shape: "prototype" }
+        ];
+
+        const REWARD_TYPES = {
+            POLICE_IMMUNITY_LONG: { type: 'police_immunity_long', duration: 300000, name: "IMMUNITÉ POLICE (5min)", color: 0x0000ff, emissive: 0x0000aa },
+            POLICE_IMMUNITY_SHORT: { type: 'police_immunity_short', duration: 60000, name: "DISCRÉTION (60s)", color: 0x00aaff, emissive: 0x0077cc },
+            TEMP_CAR: { type: 'temp_car', duration: 60000, name: "VOITURE BONUS (60s)", color: 0xffd700, emissive: 0xaa8c00 },
+            INFINITE_NITRO: { type: 'infinite_nitro', duration: 20000, name: "NITRO INFINIE (20s)", color: 0xff8800, emissive: 0xcc5500 },
+            SCORE_BONUS: { type: 'score_bonus', value: 5000, name: "+5000 SCORE", color: 0x00ff00, emissive: 0x00cc00 },
+        };
+
+        // Global Game Variables
+        let selectedCarIndex = 0;
+        let rewards = [];
+        let activePowerups = {};
+        let originalCarIndex = -1;
+        let globalLightAdjustment = 1.0;
+        let scene, camera, renderer;
+        let playerCar, buildings = [], aiCars = [], clouds = [], airplanes = [];
+        let move = { f: false, b: false, l: false, r: false, nitro: false, camUp: false, camDown: false, camLeft: false, camRight: false, hop: false };
+        let camRot = { h: 0, v: 0.3 }; 
+        let currentSpeed = 0, nitroLevel = 100, isRunning = false, score = 0, carVerticalVelocity = 0;
+        let isChased = false, policeCar = null, chaseStartTime = 0;
+        const CHASE_DURATION = 60000;
+        let PHY = { maxSpeed: 2.0, accel: 0.02, turn: 0.04, nitroMult: 1.5 };
+        let audioCtx, engineIdleSource, engineRevSource, engineIdleGain, engineRevGain, soundsLoaded = false, rewardSoundBuffer, collisionSoundBuffer;
+
+        // Garage specific
+        let garagePreview = {
+            scene: null,
+            camera: null,
+            renderer: null,
+            mainCarMesh: null,
+            gridMeshes: [], // All miniature cars
+            container: null,
+            domCards: [] // References to DOM elements for scissor test
+        };
+
+        function submitUsername() {
+            const input = document.getElementById('username-input');
+            const rawUsername = input.value.trim();
+            if (rawUsername) {
+                username = rawUsername.charAt(0).toUpperCase() + rawUsername.slice(1);
+            }
+            document.getElementById('username-screen').style.display = 'none';
+            openGarage();
+        }
+
+        // --- AUDIO ---
+        function togglePlayMusic() {
+            const music = document.getElementById('game-music');
+            if (music.paused) music.play(); else music.pause();
+        }
+        function skipMusic(seconds) {
+            const music = document.getElementById('game-music');
+            music.currentTime = Math.max(0, music.currentTime + seconds);
+        }
+        async function initAudio() {
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                async function loadSound(url) {
+                    const response = await fetch(url);
+                    const arrayBuffer = await response.arrayBuffer();
+                    return await audioCtx.decodeAudioData(arrayBuffer);
+                }
+                const idleBuffer = await loadSound('engine-idle.wav');
+                const revBuffer = await loadSound('engine-rev.wav');
+                rewardSoundBuffer = await loadSound('reward.wav');
+                collisionSoundBuffer = await loadSound('collision.wav');
+
+                engineIdleSource = audioCtx.createBufferSource(); engineIdleSource.buffer = idleBuffer; engineIdleSource.loop = true;
+                engineRevSource = audioCtx.createBufferSource(); engineRevSource.buffer = revBuffer; engineRevSource.loop = true;
+                engineIdleGain = audioCtx.createGain(); engineRevGain = audioCtx.createGain();
+                engineIdleSource.connect(engineIdleGain).connect(audioCtx.destination);
+                engineRevSource.connect(engineRevGain).connect(audioCtx.destination);
+                soundsLoaded = true;
+            } catch(e) { console.log("Audio non chargé (fichiers manquants ?), jeu silencieux."); }
+        }
+        function playSound(buffer) {
+            if (!soundsLoaded || !buffer || audioCtx.state === 'suspended') return;
+            const source = audioCtx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(audioCtx.destination);
+            source.start(0);
+        }
+
+        // --- CAR GEOMETRY ---
+        function createCarGeometry(shape, color) {
+            const carGroup = new THREE.Group();
+            const matBody = new THREE.MeshStandardMaterial({ color: color, metalness: 0.6, roughness: 0.2 });
+            const matGlass = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1 });
+
+            if (shape === "f1") {
+                const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.4, 3.2), matBody); body.position.y = 0.4;
+                const wingF = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 0.8), matBody); wingF.position.set(0, 0.5, -1.3);
+                const wingR = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 0.8), matBody); wingR.position.set(0, 0.8, 1.3);
+                carGroup.add(body, wingF, wingR);
+            } else if (shape === "truck") {
+                const base = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.8, 3.5), matBody); base.position.y = 0.6;
+                const cab = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.2, 1.2), matBody); cab.position.set(0, 1.4, -0.6);
+                carGroup.add(base, cab);
+            } else if (shape === "muscle") {
+                const main = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.7, 2.8), matBody); main.position.y = 0.55;
+                const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.6, 1.4), matGlass); cabin.position.set(0, 1.15, 0.3);
+                carGroup.add(main, cabin);
+            } else if (shape === "sport") {
+                const main = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.5, 2.5), matBody); main.position.y = 0.45;
+                const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.5, 1.2), matGlass); cabin.position.set(0, 0.85, 0.1);
+                const spoiler = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.1, 0.5), matBody); spoiler.position.set(0, 0.8, 1.1);
+                carGroup.add(main, cabin, spoiler);
+            } else if (shape === "hatch") {
+                const main = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.7, 2.0), matBody); main.position.y = 0.55;
+                const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.6, 1.1), matGlass); cabin.position.set(0, 1.1, 0.1);
+                carGroup.add(main, cabin);
+            } else if (shape === "suv") {
+                const main = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.9, 2.9), matBody); main.position.y = 0.7;
+                const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.8, 1.8), matGlass); cabin.position.set(0, 1.5, -0.1);
+                carGroup.add(main, cabin);
+            } else if (shape === "concept" || shape === "prototype" || shape === "hypercar") {
+                const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.4, 3.0), matBody); body.position.y = 0.4;
+                const cockpit = new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), matGlass); cockpit.position.set(0, 0.4, -0.2);
+                carGroup.add(body, cockpit);
+            } else if (shape === "gt") {
+                const main = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.6, 2.7), matBody); main.position.y = 0.5;
+                const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.5, 1.4), matGlass); cabin.position.set(0, 1.0, 0.2);
+                carGroup.add(main, cabin);
+            } else if (shape === "classic") {
+                const main = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.7, 2.4), matBody); main.position.y = 0.55;
+                const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.6, 1.0), matGlass); cabin.position.set(0, 1.15, 0);
+                carGroup.add(main, cabin);
+            } else if (shape === "coupe") {
+                const main = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.6, 2.6), matBody); main.position.y = 0.5;
+                const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.5, 1.2), matGlass); cabin.position.set(0, 1.0, 0.1);
+                carGroup.add(main, cabin);
+            } else { // Berline
+                const main = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.6, 2.2), matBody); main.position.y = 0.5;
+                const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.5, 1.0), matGlass); cabin.position.set(0, 1.0, 0);
+                carGroup.add(main, cabin);
+            }
+
+            const wGeo = new THREE.CylinderGeometry(0.3, 0.3, 1, 16); wGeo.rotateZ(Math.PI/2);
+            const wMat = new THREE.MeshBasicMaterial({color:0x111111});
+            const w1 = new THREE.Mesh(wGeo, wMat); w1.position.set(-0.6, 0.3, 1.0);
+            const w2 = new THREE.Mesh(wGeo, wMat); w2.position.set(0.6, 0.3, 1.0);
+            const w3 = new THREE.Mesh(wGeo, wMat); w3.position.set(-0.6, 0.3, -1.0);
+            const w4 = new THREE.Mesh(wGeo, wMat); w4.position.set(0.6, 0.3, -1.0);
+            carGroup.add(w1, w2, w3, w4);
+            carGroup.castShadow = true;
+            return carGroup;
+        }
+
+        // --- CYCLE JOUR/NUIT ---
+        const CYCLE_DURATION = 120 * 1000;
+        let startTime = Date.now();
+        let dayCycleHour = 0;
+        let roadMaterial, ambientLight; 
+        
+        const TIME_KEYFRAMES = {
+            0:  [0x87CEEB, 0x87CEEB, 0x333333, 1.4, 0.0002],
+            6:  [0x87CEEB, 0x87CEEB, 0x333333, 1.4, 0.0002],
+            12: [0xADD8E6, 0xADD8E6, 0x333333, 1.6, 0.0001],
+            18: [0x87CEEB, 0x87CEEB, 0x333333, 1.4, 0.0002],
+            24: [0x87CEEB, 0x87CEEB, 0x333333, 1.4, 0.0002]
+        };
+
+        function lerpColor(c1, c2, alpha) {
+            const r1 = (c1 >> 16) & 255; const g1 = (c1 >> 8) & 255; const b1 = c1 & 255;
+            const r2 = (c2 >> 16) & 255; const g2 = (c2 >> 8) & 255; const b2 = c2 & 255;
+            return ((Math.round(r1+(r2-r1)*alpha))<<16) + ((Math.round(g1+(g2-g1)*alpha))<<8) + Math.round(b1+(b2-b1)*alpha);
+        }
+
+        function updateTimeCycle() {
+            const elapsed = (Date.now() - startTime) % CYCLE_DURATION;
+            dayCycleHour = (elapsed / CYCLE_DURATION) * 24;
+            
+            const keys = Object.keys(TIME_KEYFRAMES).map(Number);
+            let startHour, endHour;
+            for (let i = 0; i < keys.length - 1; i++) { if (dayCycleHour >= keys[i] && dayCycleHour <= keys[i+1]) { startHour = keys[i]; endHour = keys[i+1]; break; } }
+            if (!startHour) { startHour = 18; endHour = 24; }
+            
+            const startProps = TIME_KEYFRAMES[startHour];
+            const endProps = TIME_KEYFRAMES[endHour];
+            const alpha = (dayCycleHour - startHour) / (endHour - startHour);
+            
+            const bgColor = lerpColor(startProps[0], endProps[0], alpha);
+            const fogColor = lerpColor(startProps[1], endProps[1], alpha);
+            const fogDens = startProps[4] + (endProps[4] - startProps[4]) * alpha;
+            const lightInt = startProps[3] + (endProps[3] - startProps[3]) * alpha;
+
+            if(scene) {
+                scene.background.setHex(bgColor);
+                scene.fog.color.setHex(fogColor);
+                scene.fog.density = fogDens;
+                if (ambientLight) ambientLight.intensity = lightInt * 0.5 * globalLightAdjustment; 
+            }
+            
+            const h = Math.floor(dayCycleHour);
+            const m = Math.floor((dayCycleHour % 1) * 60);
+            document.getElementById('time-display').innerText = `${h.toString().padStart(2,'0')}h${m.toString().padStart(2,'0')}`;
+        }
+
+        window.updateBrightness = function(v) { globalLightAdjustment = parseFloat(v); };
+
+        // --- INIT GAME ---
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050510); 
+            scene.fog = new THREE.FogExp2(0x050510, 0.0025);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            const plane = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), roadMaterial = new THREE.MeshStandardMaterial({ color: 0x808080, roughness: 0.6 }));
+            plane.rotation.x = -Math.PI/2;
+            plane.receiveShadow = true;
+            scene.add(plane);
+
+            ambientLight = new THREE.AmbientLight(0x404040); scene.add(ambientLight);
+
+            // Objects
+            generateCity();
+            createAICars(15);
+            generateRewards();
+            createClouds();
+            createAirplanes(3);
+            
+            // Audio & UI
+            loadAndDisplayLeaderboard();
+            initAudio();
+            
+            // GARAGE INIT
+            initGaragePreview();
+            initGTCarousel();
+
+            // Events
+            document.addEventListener('keydown', e => handleKey(e, true));
+            document.addEventListener('keyup', e => handleKey(e, false));
+            window.addEventListener('resize', () => {
+                const w = window.innerWidth, h = window.innerHeight;
+                camera.aspect = w/h; camera.updateProjectionMatrix();
+                renderer.setSize(w, h);
+                // Also resize garage if needed
+                if(garagePreview.renderer) {
+                    garagePreview.camera.aspect = w/h;
+                    garagePreview.camera.updateProjectionMatrix();
+                    garagePreview.renderer.setSize(w, h);
+                }
+            });
+            
+            animate();
+        }
+
+        // --- GARAGE LOGIC & GRAN TURISMO CAROUSEL ---
+        
+        function initGaragePreview() {
+            garagePreview.container = document.getElementById('car-preview-container');
+            
+            // Scene
+            garagePreview.scene = new THREE.Scene();
+            garagePreview.scene.background = new THREE.Color(0x000000);
+
+            // Camera (Main Showroom)
+            garagePreview.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+            garagePreview.camera.position.set(3.5, 2, 4.5);
+            garagePreview.camera.lookAt(0, 0.5, 0);
+
+            // Renderer
+            garagePreview.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            garagePreview.renderer.setSize(window.innerWidth, window.innerHeight);
+            garagePreview.renderer.setPixelRatio(window.devicePixelRatio);
+            garagePreview.renderer.shadowMap.enabled = true;
+            garagePreview.container.appendChild(garagePreview.renderer.domElement);
+
+            // Lighting
+            const hemiLight = new THREE.HemisphereLight(0xffffff, 0x222222, 1);
+            garagePreview.scene.add(hemiLight);
+            
+            const spotLight = new THREE.SpotLight(0xffffff, 2);
+            spotLight.position.set(5, 10, 5);
+            spotLight.castShadow = true;
+            garagePreview.scene.add(spotLight);
+            
+            // Floor
+            const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+            garagePreview.scene.add(gridHelper);
+
+            // Pre-create ALL car meshes for the carousel
+            CARS.forEach((carData, index) => {
+                // Miniature for carousel (stored in array, not scene yet)
+                const mesh = createCarGeometry(carData.shape, carData.color);
+                mesh.userData.id = index;
+                garagePreview.gridMeshes.push(mesh);
+            });
+            
+            selectCar(0); // Select first by default
+        }
+
+        function initGTCarousel() {
+            const container = document.getElementById('gt-scroll-container');
+            container.innerHTML = '';
+            
+            CARS.forEach((car, index) => {
+                const card = document.createElement('div');
+                card.className = 'gt-card';
+                if(index === 0) card.classList.add('selected');
+                card.onclick = () => {
+                    document.querySelectorAll('.gt-card').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    selectCar(index);
+                };
+
+                // Target div for scissor rect calculation
+                const target = document.createElement('div');
+                target.className = 'gt-card-canvas-target';
+                card.appendChild(target);
+
+                const name = document.createElement('div');
+                name.className = 'gt-card-name';
+                name.innerText = car.name;
+                card.appendChild(name);
+
+                container.appendChild(card);
+                garagePreview.domCards.push(target);
+            });
+        }
+
+        function selectCar(index) {
+            selectedCarIndex = index;
+            const carData = CARS[index];
+
+            // 1. Update UI Text
+            document.getElementById('selected-car-name').innerText = carData.name;
+            document.getElementById('selected-car-desc').innerText = carData.desc;
+            document.getElementById('selected-car-name').style.color = '#' + carData.color.toString(16).padStart(6, '0');
+            
+            // 2. Update Stats Bars
+            document.getElementById('stat-speed').style.width = (carData.speed / 3.5 * 100) + '%';
+            document.getElementById('stat-accel').style.width = (carData.accel / 0.05 * 100) + '%';
+            document.getElementById('stat-handling').style.width = (carData.handle / 0.1 * 100) + '%';
+
+            // 3. Update Main 3D Model
+            if (garagePreview.mainCarMesh) garagePreview.scene.remove(garagePreview.mainCarMesh);
+            garagePreview.mainCarMesh = createCarGeometry(carData.shape, carData.color);
+            garagePreview.scene.add(garagePreview.mainCarMesh);
+        }
+
+        function renderGarageFrame() {
+            if (!garagePreview.renderer) return;
+            const r = garagePreview.renderer;
+            
+            // 1. Render Main Background Scene (Full Screen)
+            r.setScissorTest(false);
+            r.setViewport(0, 0, window.innerWidth, window.innerHeight);
+            r.clear();
+            
+            if (garagePreview.mainCarMesh) {
+                garagePreview.mainCarMesh.rotation.y += 0.005;
+                r.render(garagePreview.scene, garagePreview.camera);
+            }
+
+            // 2. Render Carousel Thumbnails (Scissor Test)
+            const rect = r.domElement.getBoundingClientRect();
+            // We use the same scene/camera for simplicity but move the car mesh or swap it?
+            // Better: Swap the mesh in the scene for the specific thumbnail render
+            
+            // Save current scene state
+            const mainMesh = garagePreview.mainCarMesh;
+            garagePreview.scene.remove(mainMesh); 
+
+            // Adjust camera for thumbnails (closer)
+            const originalCamPos = garagePreview.camera.position.clone();
+            garagePreview.camera.position.set(2.5, 1.5, 3.5);
+            garagePreview.camera.lookAt(0, 0.5, 0);
+            
+            r.setScissorTest(true);
+
+            garagePreview.domCards.forEach((domEl, index) => {
+                const box = domEl.getBoundingClientRect();
+                
+                // Only render if visible on screen
+                if (box.bottom < 0 || box.top > window.innerHeight || box.right < 0 || box.left > window.innerWidth) return;
+
+                // Calculate Scissor Rect (WebGL y is inverted relative to DOM)
+                const width = box.width;
+                const height = box.height;
+                const left = box.left;
+                const bottom = window.innerHeight - box.bottom;
+
+                r.setViewport(left, bottom, width, height);
+                r.setScissor(left, bottom, width, height);
+
+                const miniMesh = garagePreview.gridMeshes[index];
+                miniMesh.rotation.y += 0.02; // Spin faster in box
+                
+                garagePreview.scene.add(miniMesh);
+                r.render(garagePreview.scene, garagePreview.camera);
+                garagePreview.scene.remove(miniMesh);
+            });
+
+            // Restore state
+            r.setScissorTest(false);
+            garagePreview.camera.position.copy(originalCamPos);
+            garagePreview.camera.lookAt(0, 0.5, 0);
+            if (mainMesh) garagePreview.scene.add(mainMesh);
+        }
+
+        // --- GAME LOGIC ---
+
+        function spawnPlayerCar() {
+            if(playerCar) scene.remove(playerCar);
+            const data = CARS[selectedCarIndex];
+            PHY.maxSpeed = data.speed; PHY.accel = data.accel; PHY.turn = data.handle;
+            playerCar = createCarGeometry(data.shape, data.color);
+            const tail = new THREE.PointLight(0xff0000, 2, 8); tail.position.set(0, 0.8, 1.5); playerCar.add(tail);
+            const hlL = new THREE.SpotLight(0xffffff, 5, 60); hlL.position.set(-0.4, 0.8, -1); hlL.target.position.set(-0.4, 0, -10); playerCar.add(hlL); playerCar.add(hlL.target);
+            const hlR = new THREE.SpotLight(0xffffff, 5, 60); hlR.position.set(0.4, 0.8, -1); hlR.target.position.set(0.4, 0, -10); playerCar.add(hlR); playerCar.add(hlR.target);
+            scene.add(playerCar);
+        }
+
+        function createReward(rewardType, position) {
+            const geometry = new THREE.TorusGeometry(1.5, 0.5, 8, 32);
+            const material = new THREE.MeshStandardMaterial({ color: rewardType.color, emissive: rewardType.emissive, roughness: 0.2, metalness: 0.9 });
+            const rewardMesh = new THREE.Mesh(geometry, material);
+            rewardMesh.position.copy(position);
+            rewardMesh.rotation.x = Math.PI / 2;
+            rewardMesh.castShadow = true;
+            rewards.push({ mesh: rewardMesh, type: rewardType, position: position });
+            scene.add(rewardMesh);
+        }
+        function generateRewards(n=10) {
+            const types = Object.values(REWARD_TYPES);
+            for (let i=0; i<n; i++) {
+                createReward(types[Math.floor(Math.random()*types.length)], new THREE.Vector3((Math.random()-0.5)*1400, 1, (Math.random()-0.5)*1400));
+            }
+        }
+        function createClouds(n=50) {
+            const mat = new THREE.SpriteMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 });
+            for (let i=0; i<n; i++) {
+                const cloud = new THREE.Sprite(mat.clone());
+                cloud.position.set((Math.random()-0.5)*3000, Math.random()*150+150, (Math.random()-0.5)*3000);
+                cloud.scale.set(200, 100, 1); cloud.userData.speed = Math.random()*0.2+0.1;
+                clouds.push(cloud); scene.add(cloud);
+            }
+        }
+        function updateClouds() {
+            clouds.forEach(c => {
+                c.position.x += c.userData.speed;
+                if(c.position.x > 1500) { c.position.x = -1500; c.position.z = (Math.random()-0.5)*3000; }
+            });
+        }
+        function createAirplanes(n=3) {
+            for(let i=0; i<n; i++) {
+                const g = new THREE.Group();
+                const m = new THREE.MeshStandardMaterial({color:0xcccccc});
+                const b = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.4,10), m); b.rotation.z=Math.PI/2; g.add(b);
+                const w = new THREE.Mesh(new THREE.BoxGeometry(12,0.3,2.5), m); w.position.z=-1; g.add(w);
+                g.scale.set(2,2,2);
+                
+                const sx = (Math.random()>0.5?1:-1)*2000, sz = (Math.random()-0.5)*4000, y = Math.random()*100+200;
+                g.position.set(sx, y, sz);
+                g.userData = { speed: Math.random()*5+3, end: new THREE.Vector3(-sx, y, (Math.random()-0.5)*4000) };
+                g.lookAt(g.userData.end);
+                airplanes.push(g); scene.add(g);
+            }
+        }
+        function updateAirplanes() {
+            airplanes.forEach(p => {
+                p.position.addScaledVector(new THREE.Vector3().subVectors(p.userData.end, p.position).normalize(), p.userData.speed);
+                if(p.position.distanceTo(p.userData.end)<50) {
+                    const sx = (Math.random()>0.5?1:-1)*2000, sz = (Math.random()-0.5)*4000, y = Math.random()*100+200;
+                    p.position.set(sx, y, sz);
+                    p.userData.end.set(-sx, y, (Math.random()-0.5)*4000); p.lookAt(p.userData.end);
+                }
+            });
+        }
+
+        function generateCity() {
+            const count = 150;
+            const geo = new THREE.BoxGeometry(1,1,1);
+            const mat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+            const mesh = new THREE.InstancedMesh(geo, mat, count);
+            const dummy = new THREE.Object3D();
+            for(let i=0; i<count; i++) {
+                let w = Math.random()*10+5, h = Math.random()*50+10, d = Math.random()*10+5;
+                let x = (Math.random()-0.5)*1000, z = (Math.random()-0.5)*1000;
+                if(Math.abs(x)<30) x+=40*(x>0?1:-1);
+                dummy.scale.set(w,h,d); dummy.position.set(x,h/2,z); dummy.updateMatrix();
+                mesh.setMatrixAt(i, dummy.matrix);
+                buildings.push({ position: new THREE.Vector3(x,h/2,z), width:w, depth:d });
+            }
+            scene.add(mesh);
+        }
+        function createAICars(n) {
+            for(let i=0; i<n; i++) {
+                const c = createCarGeometry('sedan', Math.random()*0xffffff);
+                c.position.set((Math.random()-0.5)*50, 0.3, (Math.random()-0.5)*300);
+                c.userData = { speed: Math.random()*0.5+0.3, dir: new THREE.Vector3((Math.random()-0.5)*2,0,(Math.random()-0.5)*2).normalize(), last: Date.now() };
+                scene.add(c); aiCars.push(c);
+            }
+        }
+        function spawnPolice() {
+            if(policeCar) scene.remove(policeCar);
+            policeCar = createCarGeometry('sedan', 0x111111);
+            const s = new THREE.PointLight(0xff0000, 5, 20); s.position.set(0,1.5,0); policeCar.add(s);
+            policeCar.userData.sirenInt = setInterval(()=>{ s.color.setHex(s.color.getHex()===0xff0000?0x0000ff:0xff0000); }, 200);
+            policeCar.position.set(playerCar.position.x-20, 0.3, playerCar.position.z-20);
+            policeCar.userData.speed = PHY.maxSpeed * 0.98;
+            scene.add(policeCar);
+            document.getElementById('police-warning').style.display='block';
+            document.getElementById('police-timer-bar').style.display='block';
+            chaseStartTime = Date.now();
+        }
+
+        // --- GAME LOOP ---
+        function updatePhysics() {
+            const prev = playerCar.position.clone();
+            let acc = PHY.accel, max = PHY.maxSpeed;
+            const infNitro = activePowerups.infinite_nitro && Date.now() < activePowerups.infinite_nitro;
+
+            if (move.nitro && (nitroLevel > 0 || infNitro) ) {
+                acc *= 2.5; max *= PHY.nitroMult; 
+                if(!infNitro) nitroLevel = Math.max(0, nitroLevel - 0.8);
+                camera.position.x += (Math.random()-0.5)*0.1;
+            } else if (!move.nitro && nitroLevel < 100) nitroLevel += 0.3;
+
+            if (move.f) currentSpeed += acc; if (move.b) currentSpeed -= acc;
+            currentSpeed *= 0.98; if(currentSpeed > max) currentSpeed = max;
+
+            // Jump
+            const gravity = -0.02, jumpForce = 0.4, ground = 0.3;
+            if (move.hop && playerCar.position.y.toFixed(2) <= ground) { carVerticalVelocity = jumpForce; move.hop = false; }
+            playerCar.position.y += carVerticalVelocity; carVerticalVelocity += gravity;
+            if (playerCar.position.y < ground) { playerCar.position.y = ground; carVerticalVelocity = 0; }
+
+            if (Math.abs(currentSpeed) > 0.01) {
+                let dir = (currentSpeed > 0) ? 1 : -1;
+                let tf = (playerCar.position.y > ground + 0.05) ? 1.5 : 1;
+                if (move.l) playerCar.rotation.y += PHY.turn * dir * tf; 
+                if (move.r) playerCar.rotation.y -= PHY.turn * dir * tf;
+            }
+            playerCar.position.x -= Math.sin(playerCar.rotation.y) * currentSpeed;
+            playerCar.position.z -= Math.cos(playerCar.rotation.y) * currentSpeed;
+
+            // Collisions
+            if (Math.abs(playerCar.position.x) > 750 || Math.abs(playerCar.position.z) > 750) { playerCar.position.copy(prev); currentSpeed *= -0.2; }
+            score += Math.abs(currentSpeed);
+
+            buildings.forEach(b => {
+                if(Math.hypot(playerCar.position.x - b.position.x, playerCar.position.z - b.position.z) < 1.2 + Math.max(b.width,b.depth)/2) {
+                    playerCar.position.copy(prev); currentSpeed *= -0.5;
+                }
+            });
+            aiCars.forEach(ai => {
+                if(playerCar.position.distanceTo(ai.position) < 2.5) {
+                    playSound(collisionSoundBuffer);
+                    playerCar.position.copy(prev); currentSpeed = 0;
+                    if(!isChased) { isChased = true; spawnPolice(); }
+                }
+                // AI Logic
+                if(Date.now() - ai.userData.last > 5000) { ai.userData.dir.set((Math.random()-0.5)*2,0,(Math.random()-0.5)*2).normalize(); ai.userData.last = Date.now(); }
+                ai.position.addScaledVector(ai.userData.dir, ai.userData.speed*0.5);
+                ai.rotation.y = Math.atan2(ai.userData.dir.x, ai.userData.dir.z);
+                if(Math.abs(ai.position.x)>750 || Math.abs(ai.position.z)>750) { ai.position.copy(playerCar.position).add(new THREE.Vector3((Math.random()-0.5)*100,0,(Math.random()-0.5)*100)); }
+            });
+
+            // Rewards
+            for(let i=rewards.length-1; i>=0; i--) {
+                if(playerCar.position.distanceTo(rewards[i].position) < 2.5) {
+                    collectReward(rewards[i], i);
+                    break;
+                }
+            }
+        }
+
+        function collectReward(r, i) {
+            playSound(rewardSoundBuffer);
+            scene.remove(r.mesh); rewards.splice(i, 1);
+            showRewardMessage(r.type.name);
+            const t = r.type;
+            if(t.type.includes('police')) {
+                activePowerups.police_immunity = Date.now() + t.duration;
+                if(isChased) { isChased = false; scene.remove(policeCar); clearInterval(policeCar.userData.sirenInt); policeCar = null; document.getElementById('police-warning').style.display='none'; document.getElementById('police-timer-bar').style.display='none'; }
+            } else if(t.type === 'temp_car') {
+                if(originalCarIndex===-1) originalCarIndex = selectedCarIndex;
+                activePowerups.temp_car = Date.now() + t.duration;
+                selectedCarIndex = CARS.length - 1; spawnPlayerCar();
+            } else if(t.type === 'infinite_nitro') activePowerups.infinite_nitro = Date.now() + t.duration;
+            else if(t.type === 'score_bonus') score += t.value;
+
+            setTimeout(() => {
+                const types = Object.values(REWARD_TYPES);
+                createReward(types[Math.floor(Math.random()*types.length)], new THREE.Vector3((Math.random()-0.5)*1400, 1, (Math.random()-0.5)*1400));
+            }, 5000);
+        }
+
+        function showRewardMessage(msg) {
+            const el = document.getElementById('reward-message'); el.innerText = msg; el.style.display = 'block';
+            el.style.animation = 'none'; void el.offsetWidth; el.style.animation = 'fadeInOut 3s ease-in-out';
+        }
+
+        function updatePolice() {
+            if(!isChased || !policeCar) return;
+            const left = Math.max(0, CHASE_DURATION - (Date.now() - chaseStartTime));
+            document.getElementById('police-timer-fill').style.width = (left/CHASE_DURATION)*100+'%';
+            if(left<=0) { isChased = false; scene.remove(policeCar); policeCar = null; document.getElementById('police-warning').style.display='none'; document.getElementById('police-timer-bar').style.display='none'; return; }
+            
+            const dir = new THREE.Vector3().subVectors(playerCar.position, policeCar.position);
+            const ang = Math.atan2(dir.x, dir.z);
+            let diff = ang - policeCar.rotation.y;
+            if(diff > Math.PI) diff -= 2*Math.PI; if(diff < -Math.PI) diff += 2*Math.PI;
+            policeCar.rotation.y += diff * 0.05;
+            policeCar.position.x += Math.sin(policeCar.rotation.y) * policeCar.userData.speed * 0.6;
+            policeCar.position.z += Math.cos(policeCar.rotation.y) * policeCar.userData.speed * 0.6;
+            if(playerCar.position.distanceTo(policeCar.position) < 2.5) {
+                isRunning = false; document.getElementById('ui-layer').style.display='none';
+                document.getElementById('game-over-screen').style.display='flex';
+                saveScore(username, Math.floor(score));
+            }
+        }
+
+        function updateCamera() {
+            if(move.camUp) camRot.v = Math.min(1.0, camRot.v+0.03); if(move.camDown) camRot.v = Math.max(0.1, camRot.v-0.03);
+            if(move.camLeft) camRot.h += 0.03; if(move.camRight) camRot.h -= 0.03;
+            const tx = playerCar.position.x + Math.sin(playerCar.rotation.y + camRot.h) * 7;
+            const tz = playerCar.position.z + Math.cos(playerCar.rotation.y + camRot.h) * 7;
+            camera.position.x += (tx - camera.position.x)*0.2;
+            camera.position.z += (tz - camera.position.z)*0.2;
+            camera.position.y += (playerCar.position.y + 3 + camRot.v*5 - camera.position.y)*0.2;
+            camera.lookAt(playerCar.position);
+        }
+
+        function drawMinimap() {
+            const ctx = document.getElementById('minimap-canvas').getContext('2d');
+            ctx.clearRect(0,0,150,150); ctx.save(); ctx.translate(75, 75); ctx.rotate(playerCar.rotation.y);
+            ctx.fillStyle = '#444';
+            buildings.forEach(b => {
+                let dx = b.position.x - playerCar.position.x, dz = b.position.z - playerCar.position.z;
+                if(Math.abs(dx)<150 && Math.abs(dz)<150) ctx.fillRect(dx*0.5 - b.width/4, dz*0.5 - b.depth/4, b.width/2, b.depth/2);
+            });
+            ctx.fillStyle='#00ffff'; ctx.beginPath(); ctx.moveTo(0,-6); ctx.lineTo(4,6); ctx.lineTo(-4,6); ctx.fill();
+            ctx.fillStyle='#ff0000'; aiCars.forEach(a => { let dx=a.position.x-playerCar.position.x, dz=a.position.z-playerCar.position.z; if(Math.abs(dx)<150) ctx.fillRect(dx*0.5-2, dz*0.5-2, 4,4); });
+            if(policeCar) { ctx.fillStyle='#ffff00'; let dx=policeCar.position.x-playerCar.position.x, dz=policeCar.position.z-playerCar.position.z; ctx.fillRect(dx*0.5-3, dz*0.5-3, 6,6); }
+            ctx.restore();
+        }
+
+        function updateEngineSound() {
+            if (!soundsLoaded || audioCtx.state === 'suspended') return;
+            const ratio = Math.min(1, Math.abs(currentSpeed)/PHY.maxSpeed);
+            engineIdleGain.gain.setTargetAtTime(1-ratio, audioCtx.currentTime, 0.05);
+            engineRevGain.gain.setTargetAtTime(ratio*0.7, audioCtx.currentTime, 0.05);
+            engineRevSource.playbackRate.setTargetAtTime(0.8 + ratio*1.2, audioCtx.currentTime, 0.1);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            updateTimeCycle(); updateClouds(); updateAirplanes();
+
+            // Garage Mode Render
+            if (document.getElementById('garage-screen').style.display === 'flex') {
+                renderGarageFrame();
+                return; // Stop game loop
+            }
+
+            // Game Mode Render
+            if(isRunning && playerCar) {
+                // Check Powerups Expiration
+                const now = Date.now();
+                if(activePowerups.temp_car && now > activePowerups.temp_car) { delete activePowerups.temp_car; selectedCarIndex = originalCarIndex; originalCarIndex = -1; spawnPlayerCar(); showRewardMessage("Fin Voiture Bonus"); }
+                if(activePowerups.infinite_nitro && now > activePowerups.infinite_nitro) { delete activePowerups.infinite_nitro; showRewardMessage("Fin Nitro Infinie"); }
+                
+                updatePhysics(); updateCamera(); updatePolice(); updateEngineSound();
+                
+                // UI
+                document.getElementById('speed-val').innerText = Math.floor(Math.abs(currentSpeed)*120);
+                document.getElementById('nitro-bar').style.width = nitroLevel + '%';
+                document.getElementById('score-display').innerText = 'SCORE: ' + Math.floor(score);
+                drawMinimap();
+                
+                renderer.render(scene, camera);
+            }
+        }
+
+        // --- SCORES & MENUS ---
+        function getScores() { return JSON.parse(localStorage.getItem('nightVelocityScores') || '[]'); }
+        function saveScore(name, sc) {
+            const scores = getScores();
+            scores.push({ name, score: sc, date: new Date().toLocaleDateString() });
+            scores.sort((a,b) => b.score - a.score);
+            localStorage.setItem('nightVelocityScores', JSON.stringify(scores.slice(0,100)));
+        }
+        function loadAndDisplayLeaderboard() {
+            const l = document.getElementById('leaderboard-list'); l.innerHTML = '';
+            getScores().slice(0,5).forEach(s => {
+                const li = document.createElement('li');
+                li.innerHTML = `<span>${s.name} (${s.date})</span><span>${s.score}</span>`;
+                l.appendChild(li);
+            });
+        }
+
+        function handleKey(e, down) {
+            const k = e.key.toLowerCase();
+            if(k === 'z') move.f = down; if(k === 's') move.b = down;
+            if(k === 'q') move.l = down; if(k === 'd') move.r = down;
+            if(k === 'a') move.hop = down; if(k === ' ') move.nitro = down;
+            if(e.key.startsWith('Arrow')) {
+                if(e.key==='ArrowUp') move.camUp=down; if(e.key==='ArrowDown') move.camDown=down;
+                if(e.key==='ArrowLeft') move.camLeft=down; if(e.key==='ArrowRight') move.camRight=down;
+            }
+        }
+
+        window.openGarage = function() { document.getElementById('main-menu').style.display='none'; document.getElementById('garage-screen').style.display='flex'; }
+        window.closeGarage = function() { document.getElementById('garage-screen').style.display='none'; document.getElementById('username-screen').style.display='flex'; }
+        window.openOptions = function() { document.getElementById('garage-screen').style.display='none'; document.getElementById('main-menu').style.display='none'; document.getElementById('options-screen').style.display='flex'; }
+        window.closeOptions = function() { document.getElementById('options-screen').style.display='none'; document.getElementById('garage-screen').style.display='flex'; }
+        window.returnToMenu = function() { document.getElementById('game-over-screen').style.display='none'; openGarage(); loadAndDisplayLeaderboard(); }
+        
+        window.startGame = function() {
+            document.getElementById('garage-screen').style.display='none';
+            document.getElementById('ui-layer').style.display='flex';
+            document.getElementById('username-display').innerText = username;
+            spawnPlayerCar(); playerCar.position.y = 0.3;
+            isRunning = true; currentSpeed = 0; nitroLevel = 100; score = 0;
+            camera.position.set(0,3,10); startTime = Date.now();
+            document.getElementById('game-music').play();
+            if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        };
+
+        init();
+    </script>
+</body>
+</html>
